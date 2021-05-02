@@ -14,14 +14,14 @@
 #
 #
 # Trigger_On_Demand_Scan.py
-# Triggers an On Demand scan for Windows workstations in the Sophos Central console
+# Triggers an On Demand scan for Windows workstations in a single Sophos Central console
 #
 # Outputs csv file containing full inventory of all devices in all sub estates
 #
 #
 # By: Michael Curtis and Robert Prechtel
 # Date: 29/6/2020
-# Version 1.03
+# Version 1.04
 # README: This script is an unsupported solution provided by
 #           Sophos Professional Services
 
@@ -73,13 +73,14 @@ def get_whoami():
     # MSP or Sophos Central Enterprise Dashboard
     # We don't use this variable in this script. It returns the organization type
     # Oraganization_Type = whoami["idType"]
-    organizationID = whoami["id"]
+    organization_id = whoami["id"]
     # Get the tennant Region
-    regionURL = whoami['apiHosts']["dataRegion"]
-    return organizationID, regionURL
+    region_url = whoami.get('apiHosts', {}).get("dataRegion", None)
+    return organization_id, region_url
 
 def get_all_computers(tenant_token, url):
     # Get all Computers from sub estates
+    #url = (f"{url}{'/endpoints?pageSize=500&view=full'}")
     computers_url = (f"{url}{'/endpoints?pageSize=500&view=full'}")
     # Loop while the page_count is not equal to 0. We have more computers to query
     page_count = 1
@@ -144,6 +145,6 @@ clientID, clientSecret = read_config()
 token_url = 'https://id.sophos.com/api/v2/oauth2/token'
 headers, post_headers = get_bearer_token(clientID, clientSecret, token_url)
 # Get the tenantID
-tenantID, tenant_url = get_whoami()
+tenant_id, tenant_url = get_whoami()
 tenant_endpoint_url = f"{tenant_url}{'/endpoint/v1'}"
-get_all_computers(tenantID, tenant_endpoint_url)
+get_all_computers(tenant_id, tenant_endpoint_url)
