@@ -16,14 +16,13 @@
 # Trigger_On_Demand_Scan.py
 # Triggers an On Demand scan for Windows workstations in a single Sophos Central console
 #
-# Outputs csv file containing full inventory of all devices in all sub estates
-#
+# Check Log "C:\ProgramData\Sophos\Endpoint Defense\Logs\SophosScanCoordinator.log"
 #
 # By: Michael Curtis and Robert Prechtel
 # Date: 29/6/2020
-# Version 1.04
+# Version 2025.7
 # README: This script is an unsupported solution provided by
-#           Sophos Professional Services
+# Sophos Professional Services
 
 import requests
 import csv
@@ -42,6 +41,20 @@ now = datetime.now()
 timestamp = str(now.strftime("%d%m%Y_%H-%M-%S"))
 # This list will hold all the computers
 list_of_machines_in_central = []
+# Allows colour to work in Microsoft PowerShell
+os.system("")
+
+# Class to add colours to the console output
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 # Get Access Token - JWT in the documentation
 def get_bearer_token(client, secret, url):
@@ -80,8 +93,11 @@ def get_whoami():
 
 def get_all_computers(tenant_token, url):
     # Get all Computers from sub estates
+    pagesize = 500
     #url = (f"{url}{'/endpoints?pageSize=500&view=full'}")
-    computers_url = (f"{url}{'/endpoints?pageSize=500&view=full'}")
+    # computers_url = (f"{url}{'/endpoints?pageSize=500&view=full'}")
+    url = f"{url}{'/endpoints?pageSize='}{pagesize}{'&sort=id:desc'}{'&view=full'}"
+    computers_url = url
     # Loop while the page_count is not equal to 0. We have more computers to query
     page_count = 1
     while page_count != 0:
@@ -101,9 +117,11 @@ def get_all_computers(tenant_token, url):
         for all_computers in computers_json["items"]:
             if all_computers['type'] == 'computer' and all_computers['os']['platform'] == 'windows':
                 # endpoint_id, native_machine_id = make_valid_client_id(all_computers['type'], all_computers['id'])
-                result_code = trigger_scan(all_computers['id'], url, post_headers)
+                result_code = trigger_scan(all_computers['id'], post_headers)
                 if result_code.status_code == 201:
-                    print(f"{'Scanning set on machine: '}{all_computers['hostname']}{'. Machine ID: '}{all_computers['id']}")
+                    print(f"{bcolors.OKGREEN}{'Scanning set on machine: '}{all_computers['hostname']}{'. Machine ID: '}{all_computers['id']}{bcolors.ENDC}")
+                else:
+                    print(f"{bcolors.FAIL}{'Scanning failed to be set on machine: '}{all_computers['hostname']}{'. Machine ID: '}{all_computers['id']}{bcolors.ENDC}")
         # This line allows you to debug on a certain computer. Add computer name
             if 'mc-nuc-dciiii' == all_computers['id']:
                 print('Add breakpoint here')
@@ -118,12 +136,10 @@ def get_all_computers(tenant_token, url):
             # If we don't get another nextKey set page_count to 0 to stop looping
             page_count = 0
 
-def trigger_scan(native_machine_id, endpoint_url, post_header):
-    # full_endpoint_url = https://api-{dataRegion}.central.sophos.com/endpoint/v1/endpoints/{endpointId}/scans
-    # full_endpoint_url = f"{endpoint_url}{'/'}{machineID}{'/'}{'scans'}"
-    full_endpoint_url = f"{endpoint_url}{'/endpoints/'}{native_machine_id}{'/'}{'scans'}"
+def trigger_scan(native_machine_id, post_header):
+    full_endpoint_url = f"{tenant_endpoint_url}{'/'}{'endpoints/'}{native_machine_id}{'/'}{'scans'}"
     # It seems you have to send blank data to the API
-    on_demand_status = {'': ''}
+    on_demand_status = {}
     result = requests.post(full_endpoint_url, data=json.dumps(on_demand_status), headers=post_header)
     return result
 
